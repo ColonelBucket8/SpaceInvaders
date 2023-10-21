@@ -1,11 +1,15 @@
+#include "OurShader.hpp"
+
 #include <cstdint>
 #include <cstdio>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#include "OurShader.hpp"
 
 const int buffer_width = 224;
 const int buffer_height = 256;
+
+bool game_running = false;
+int move_dir = 0;
 
 struct Alien
 {
@@ -86,6 +90,26 @@ void error_callback(int error, const char* description)
 	fprintf(stderr, "Error: %d: %s\n", error, description);
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+	switch (key)
+	{
+	case GLFW_KEY_ESCAPE:
+		if (action == GLFW_PRESS) game_running = false;
+		break;
+	case GLFW_KEY_RIGHT:
+		if (action == GLFW_PRESS) move_dir += 1;
+		else if (action == GLFW_RELEASE) move_dir -= 1;
+		break;
+	case GLFW_KEY_LEFT:
+		if (action == GLFW_PRESS) move_dir -= 1;
+		else if (action == GLFW_RELEASE) move_dir += 1;
+		break;
+	default:
+		break;
+	}
+}
+
 int main()
 {
 	GLFWerrorfun glfwSetErrorCallback(GLFWerrorfun cbfun);
@@ -99,6 +123,7 @@ int main()
 	}
 
 	window = glfwCreateWindow(640, 480, "Space Invaders", NULL, NULL);
+	glfwSetKeyCallback(window, key_callback);
 
 	if (!window)
 	{
@@ -227,7 +252,7 @@ int main()
 	game.num_aliens = 55;
 	game.aliens = new Alien[game.num_aliens];
 
-	game.player.x = 112 - 5;
+	game.player.x = (buffer_width / 2) - (player_sprite.width / 2);
 	game.player.y = 32;
 
 	game.player.life = 3;
@@ -243,7 +268,9 @@ int main()
 	}
 
 	int player_move_dir = 1;
-	while (!glfwWindowShouldClose(window))
+
+	game_running = true;
+	while (!glfwWindowShouldClose(window) && game_running)
 	{
 		buffer_clear(&buffer, clear_color);
 
@@ -259,6 +286,24 @@ int main()
 
 		buffer_draw_sprite(&buffer, player_sprite,
 			game.player.x, game.player.y, rgb_to_uint32(128, 0, 0));
+
+		// Input
+		int player_move_dir = 2 * move_dir;
+		if (player_move_dir != 0)
+		{
+			if (game.player.x + player_sprite.width + player_move_dir >= game.width)
+			{
+				game.player.x = game.width - player_sprite.width;
+			}
+			else if (static_cast<int>(game.player.x) + player_move_dir <= 0)
+			{
+				game.player.x = 0;
+			}
+			else
+			{
+				game.player.x += player_move_dir;
+			}
+		}
 
 		// Update animation
 		++alien_animation->time;
@@ -282,21 +327,6 @@ int main()
 
 
 		glfwSwapBuffers(window);
-
-		if (game.player.x + player_sprite.width + player_move_dir >= game.width - 1)
-		{
-			game.player.x = game.width - player_sprite.width - player_move_dir - 1;
-			player_move_dir *= -1;
-		}
-		else if (static_cast<int>(game.player.x) + player_move_dir <= 0)
-		{
-			game.player.x = 0;
-			player_move_dir *= -1;
-		}
-		else
-		{
-			game.player.x += player_move_dir;
-		}
 
 		glfwPollEvents();
 	}
